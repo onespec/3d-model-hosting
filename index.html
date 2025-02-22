@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js OBJ Loader via GitHub</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 1, 1).normalize();
+        scene.add(directionalLight);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = true;
+
+        const objLoader = new THREE.OBJLoader();
+        objLoader.load(
+            'https://raw.githubusercontent.com/onespec/3d-model-hosting/main/airboat.obj', // Corrected URL
+            function(object) {
+                object.traverse(function(child) {
+                    if (child instanceof THREE.Mesh) {
+                        child.material = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
+                    }
+                });
+                scene.add(object);
+                const box = new THREE.Box3().setFromObject(object);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 1.5;
+                cameraZ = Math.max(cameraZ, 50);
+                camera.position.set(center.x, center.y, center.z + cameraZ);
+                camera.lookAt(center);
+                controls.target.copy(center);
+                console.log('OBJ loaded successfully from GitHub:', object);
+            },
+            function(xhr) {
+                console.log('Loading progress: ' + (xhr.loaded / xhr.total * 100) + '%');
+            },
+            function(error) {
+                console.error('Failed to load OBJ file from GitHub:', error);
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const cube = new THREE.Mesh(geometry, material);
+                scene.add(cube);
+                camera.position.set(0, 0, 5);
+                camera.lookAt(0, 0, 0);
+            }
+        );
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', function() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+</html>
