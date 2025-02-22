@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js OBJ Loader via GitHub</title>
+    <title>Three.js Airboat with Colors and Rotation</title>
     <style>
         body {
             margin: 0;
@@ -12,37 +12,72 @@
     </style>
 </head>
 <body>
+    <!-- Include Three.js and necessary extensions -->
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
+        // Create the scene
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // Create the camera
+        const camera = new THREE.PerspectiveCamera(
+            75, // Field of view
+            window.innerWidth / window.innerHeight, // Aspect ratio
+            0.1, // Near clipping plane
+            1000 // Far clipping plane
+        );
+
+        // Create the renderer
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // Add ambient light
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
+
+        // Add directional light
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
         directionalLight.position.set(1, 1, 1).normalize();
         scene.add(directionalLight);
 
+        // Add orbit controls
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.enableZoom = true;
+        controls.autoRotate = false; // We’ll handle rotation manually
 
+        // Load a texture for the background
+        const textureLoader = new THREE.TextureLoader();
+        const backgroundTexture = textureLoader.load(
+            'https://threejs.org/examples/textures/2294472375_24a3b8ef46_o.jpg' // Simple starry sky texture
+        );
+        scene.background = backgroundTexture;
+
+        // Load the OBJ file
+        let airboatObject; // To reference for rotation
         const objLoader = new THREE.OBJLoader();
         objLoader.load(
-            'https://raw.githubusercontent.com/onespec/3d-model-hosting/main/airboat.obj', // Corrected URL
+            'https://raw.githubusercontent.com/onespec/3d-model-hosting/main/airboat.obj',
             function(object) {
+                // Apply a colorful material
                 object.traverse(function(child) {
                     if (child instanceof THREE.Mesh) {
-                        child.material = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
+                        child.material = new THREE.MeshPhongMaterial({
+                            color: 0xff4444, // Vibrant red (you can change this)
+                            specular: 0x555555, // Slight shine
+                            shininess: 30
+                        });
                     }
                 });
+
+                // Add the object to the scene
                 scene.add(object);
+                airboatObject = object; // Store for rotation
+
+                // Position the camera
                 const box = new THREE.Box3().setFromObject(object);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
@@ -50,9 +85,11 @@
                 const fov = camera.fov * (Math.PI / 180);
                 let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 1.5;
                 cameraZ = Math.max(cameraZ, 50);
+
                 camera.position.set(center.x, center.y, center.z + cameraZ);
                 camera.lookAt(center);
                 controls.target.copy(center);
+
                 console.log('OBJ loaded successfully from GitHub:', object);
             },
             function(xhr) {
@@ -69,13 +106,18 @@
             }
         );
 
+        // Animation loop with rotation
         function animate() {
             requestAnimationFrame(animate);
+            if (airboatObject) {
+                airboatObject.rotation.y += 0.01; // Slow rotation around Y-axis
+            }
             controls.update();
             renderer.render(scene, camera);
         }
         animate();
 
+        // Handle window resize
         window.addEventListener('resize', function() {
             const width = window.innerWidth;
             const height = window.innerHeight;
